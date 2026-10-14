@@ -1,0 +1,16 @@
+{
+  "app": "theatre-control",
+  "version": 1,
+  "slides": [
+    { "type": "title", "bigTitle": "The Evening Edition", "subtitle": "A play in two acts", "color": "cream", "bg": "black", "fontSize": "large" },
+    { "type": "blank" },
+    { "type": "title", "bigTitle": "The Cast", "subtitle": "in order of appearance", "color": "white", "bg": "black", "fontSize": "medium" },
+    { "type": "names", "sectionTitle": "Margaret Hale", "names": ["Avery Lindqvist"], "color": "white", "bg": "black", "fontSize": "medium" },
+    { "type": "names", "sectionTitle": "Thomas Reed", "names": ["Jordan Okafor"], "color": "white", "bg": "black", "fontSize": "medium" },
+    { "type": "names", "sectionTitle": "The Newsboys", "names": ["Sam Ortiz", "Priya Nair", "Leo Marchetti", "Hana Sato"], "color": "white", "bg": "black", "fontSize": "small" },
+    { "type": "names", "sectionTitle": "Directed by", "names": ["Riley Brennan"], "color": "gold", "bg": "black", "fontSize": "large" },
+    { "type": "names", "sectionTitle": "Stage Management", "names": ["Casey Wu", "Morgan Ellis"], "color": "white", "bg": "dark", "fontSize": "medium" },
+    { "type": "names", "sectionTitle": "Lighting & Sound", "names": ["Dana Kowalski", "Eli Brooks"], "color": "white", "bg": "dark", "fontSize": "medium" },
+    { "type": "title", "bigTitle": "Thank You", "subtitle": "Good night", "color": "gold", "bg": "navy", "fontSize": "large" }
+  ]
+}

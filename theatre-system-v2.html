@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theatre Control</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0d0d0d; color:#ccc; font-family:'Courier Prime',monospace; min-height:100vh; }
+
+  /* ── NAV TABS ── */
+  .tabs { display:flex; border-bottom:1px solid #1e1e1e; }
+  .tab { padding:16px 28px; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#444; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
+  .tab:hover { color:#888; }
+  .tab.active { color:#ddd; border-bottom-color:#fff; }
+
+  /* ── PAGES ── */
+  .page { display:none; padding:40px; max-width:560px; margin:0 auto; }
+  .page.active { display:block; }
+
+  /* ── SHARED ── */
+  .page-title { font-family:'Special Elite',cursive; font-size:11px; letter-spacing:6px; text-transform:uppercase; color:#555; margin-bottom:6px; }
+  .page-heading { font-family:'Special Elite',cursive; font-size:22px; letter-spacing:2px; color:#ddd; font-weight:normal; margin-bottom:32px; }
+  .status-bar { display:flex; align-items:center; gap:10px; padding:12px 16px; border:1px solid #1e1e1e; margin-bottom:32px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#555; }
+  .dot { width:7px; height:7px; border-radius:50%; background:#333; flex-shrink:0; }
+  .dot.ready   { background:#2ecc71; box-shadow:0 0 6px #2ecc71aa; animation:pulse 2s ease-in-out infinite; }
+  .dot.playing { background:#e74c3c; box-shadow:0 0 6px #e74c3caa; animation:pulse 0.8s ease-in-out infinite; }
+  .dot.nofile  { background:#f39c12; }
+  .dot.nowin   { background:#555; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .row { margin-bottom:20px; }
+  .row label { display:block; font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#444; margin-bottom:8px; }
+  .file-drop { border:1px dashed #2a2a2a; padding:20px; text-align:center; cursor:pointer; position:relative; transition:border-color 0.2s,background 0.2s; }
+  .file-drop:hover,.file-drop.dragover { border-color:#555; background:#111; }
+  .file-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .file-drop-text { font-size:11px; color:#444; letter-spacing:2px; text-transform:uppercase; }
+  .file-loaded { font-size:12px; color:#aaa; margin-top:6px; }
+  select { background:#111; border:1px solid #222; color:#bbb; font-family:'Courier Prime',monospace; font-size:13px; padding:10px 12px; width:100%; outline:none; cursor:pointer; }
+  select option { background:#111; }
+  .key-row { display:flex; gap:10px; align-items:center; }
+  .key-badge { background:#111; border:1px solid #2a2a2a; color:#fff; font-family:'Courier Prime',monospace; font-size:16px; font-weight:700; padding:10px 20px; min-width:100px; text-align:center; }
+  .btn-small { background:transparent; border:1px solid #2a2a2a; color:#555; font-family:'Courier Prime',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:10px 16px; cursor:pointer; transition:color 0.2s,border-color 0.2s; white-space:nowrap; }
+  .btn-small:hover { color:#aaa; border-color:#555; }
+  .btn-small.listening { border-color:#aaa; color:#fff; animation:blink 0.8s step-end infinite; }
+  @keyframes blink { 0%,100%{border-color:#aaa} 50%{border-color:#333} }
+  .main-actions { display:flex; gap:12px; margin-top:36px; }
+  .btn-projector { flex:1; background:transparent; border:1px solid #333; color:#888; font-family:'Courier Prime',monospace; font-size:11px; letter-spacing:3px; text-transform:uppercase; padding:16px; cursor:pointer; transition:all 0.2s; }
+  .btn-projector:hover { border-color:#666; color:#ccc; }
+  .btn-projector.active { border-color:#2ecc71; color:#2ecc71; }
+  .btn-trigger { flex:2; background:#fff; border:none; color:#000; font-family:'Courier Prime',monospace; font-size:13px; font-weight:700; letter-spacing:4px; text-transform:uppercase; padding:16px; cursor:pointer; transition:background 0.15s,color 0.15s; }
+  .btn-trigger:hover { background:#ddd; }
+  .btn-trigger:disabled { background:#1a1a1a; color:#333; cursor:not-allowed; }
+  .btn-trigger.playing { background:#e74c3c; color:#fff; }
+  .btn-trigger.playing:hover { background:#c0392b; }
+  .win-status { display:flex; align-items:center; gap:8px; margin-top:20px; padding:10px 14px; border:1px solid #1a1a1a; font-size:10px; letter-spacing:2px; color:#444; text-transform:uppercase; }
+  .hint { margin-top:14px; font-size:10px; color:#333; letter-spacing:2px; text-align:center; text-transform:uppercase; }
+
+  /* ── CREDITS PAGE ── */
+  .credits-toolbar { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; align-items:center; }
+  .credits-toolbar .btn-small { font-size:11px; padding:10px 18px; }
+  .btn-accent { background:#fff; color:#000; border:none; font-family:'Courier Prime',monospace; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; padding:10px 18px; cursor:pointer; transition:background 0.15s; }
+  .btn-accent:hover { background:#ddd; }
+  .btn-danger { background:transparent; border:1px solid #5a1a1a; color:#c0392b; font-family:'Courier Prime',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:8px 14px; cursor:pointer; transition:all 0.2s; }
+  .btn-danger:hover { background:#5a1a1a; color:#fff; }
+
+  /* Slide list */
+  .slide-list { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+  .slide-item { border:1px solid #1e1e1e; background:#0a0a0a; cursor:pointer; transition:border-color 0.2s; }
+  .slide-item:hover { border-color:#333; }
+  .slide-item.active-slide { border-color:#555; background:#111; }
+  .slide-header { display:flex; align-items:center; gap:10px; padding:12px 14px; }
+  .slide-num { font-size:10px; color:#333; letter-spacing:2px; width:28px; flex-shrink:0; }
+  .slide-preview-text { flex:1; font-size:12px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .slide-item.active-slide .slide-preview-text { color:#aaa; }
+  .slide-actions { display:flex; gap:6px; margin-left:auto; }
+  .slide-btn { background:transparent; border:none; color:#333; font-size:13px; cursor:pointer; padding:2px 6px; transition:color 0.2s; line-height:1; }
+  .slide-btn:hover { color:#aaa; }
+
+  /* Slide editor */
+  .slide-editor { border:1px solid #1e1e1e; background:#080808; padding:20px; margin-bottom:20px; }
+  .slide-editor-title { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#444; margin-bottom:14px; }
+  .slide-type-row { display:flex; gap:8px; margin-bottom:14px; }
+  .type-btn { background:transparent; border:1px solid #1e1e1e; color:#444; font-family:'Courier Prime',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:8px 14px; cursor:pointer; transition:all 0.2s; }
+  .type-btn:hover { border-color:#444; color:#888; }
+  .type-btn.active { border-color:#555; color:#ddd; background:#111; }
+  .names-textarea { width:100%; background:#0d0d0d; border:1px solid #1e1e1e; color:#ccc; font-family:'Courier Prime',monospace; font-size:13px; padding:12px; resize:vertical; min-height:100px; outline:none; transition:border-color 0.2s; line-height:1.7; }
+  .names-textarea:focus { border-color:#333; }
+  .textarea-hint { font-size:10px; color:#333; letter-spacing:1px; margin-top:6px; }
+  .slide-title-input { width:100%; background:#0d0d0d; border:1px solid #1e1e1e; color:#ccc; font-family:'Courier Prime',monospace; font-size:13px; padding:10px 12px; outline:none; margin-bottom:10px; transition:border-color 0.2s; }
+  .slide-title-input:focus { border-color:#333; }
+
+  /* Credits controls */
+  .credits-nav { display:flex; gap:12px; margin-top:24px; align-items:center; }
+  .nav-arrow { background:transparent; border:1px solid #333; color:#888; font-size:18px; width:50px; height:50px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; }
+  .nav-arrow:hover:not(:disabled) { border-color:#888; color:#fff; }
+  .nav-arrow:disabled { opacity:0.2; cursor:not-allowed; }
+  .slide-counter { font-size:11px; color:#444; letter-spacing:2px; flex:1; text-align:center; text-transform:uppercase; }
+  .btn-show-credits { flex:2; background:#fff; border:none; color:#000; font-family:'Courier Prime',monospace; font-size:12px; font-weight:700; letter-spacing:3px; text-transform:uppercase; padding:14px; cursor:pointer; transition:background 0.15s; }
+  .btn-show-credits:hover { background:#ddd; }
+  .btn-show-credits:disabled { background:#1a1a1a; color:#333; cursor:not-allowed; }
+  .btn-hide-credits { background:#333; color:#aaa; border:none; font-family:'Courier Prime',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; padding:14px 20px; cursor:pointer; transition:background 0.15s; }
+  .btn-hide-credits:hover { background:#444; }
+
+  /* Live preview strip */
+  .preview-strip { border:1px solid #1a1a1a; background:#050505; padding:16px; margin-bottom:20px; min-height:80px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px; }
+  .preview-title { font-family:'Special Elite',cursive; font-size:13px; color:#666; letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; }
+  .preview-name { font-family:'Special Elite',cursive; font-size:16px; color:#aaa; letter-spacing:1px; }
+  .preview-blank { font-size:10px; color:#2a2a2a; letter-spacing:3px; text-transform:uppercase; }
+
+  /* Text style options */
+  .style-row { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .style-select { flex:1; min-width:120px; }
+</style>
+</head>
+<body>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('video')">🎬 Video Cue</div>
+  <div class="tab" onclick="switchTab('credits')">🎭 Credits</div>
+  <div class="tab" onclick="switchTab('flashback')">📽 Flashback</div>
+</div>
+
+<!-- ══════════════ VIDEO PAGE ══════════════ -->
+<div class="page active" id="page-video">
+  <div class="page-title">Stage Control</div>
+  <div class="page-heading">Newspaper Cue</div>
+
+  <div class="status-bar">
+    <div class="dot nofile" id="status-dot"></div>
+    <span id="status-text">No video loaded</span>
+  </div>
+
+  <div class="row">
+    <label>Video File</label>
+    <div class="file-drop" id="file-drop">
+      <input type="file" accept="video/*" onchange="handleFile(this)">
+      <div class="file-drop-text">Click or drag video file here</div>
+      <div class="file-loaded" id="file-loaded"></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>Trigger Key</label>
+    <div class="key-row">
+      <div class="key-badge" id="key-badge">SPACE</div>
+      <button class="btn-small" id="capture-btn" onclick="startCapture()">Change Key</button>
+      <span id="capture-hint" style="font-size:10px;color:#555;letter-spacing:1px;display:none">press any key…</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>After Video Ends</label>
+    <select id="end-behavior">
+      <option value="black">Return to black (projector goes dark)</option>
+      <option value="loop">Loop video</option>
+      <option value="freeze">Freeze on last frame</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label>Video Scale</label>
+    <select id="video-scale" onchange="updateScale()">
+      <option value="contain">Fit to screen (letterbox)</option>
+      <option value="cover">Fill screen (crop edges)</option>
+      <option value="fill">Stretch to fill</option>
+    </select>
+  </div>
+
+  <div class="main-actions">
+    <button class="btn-projector" id="proj-btn" onclick="toggleProjectorWindow()">Open Projector</button>
+    <button class="btn-trigger" id="trigger-btn" onclick="triggerVideo()" disabled>▶ Play</button>
+  </div>
+
+  <div class="win-status">
+    <div class="dot nowin" id="win-dot"></div>
+    <span id="win-text">Projector window not open</span>
+  </div>
+  <div class="hint" id="key-hint">Open projector window first, then press SPACE to trigger</div>
+</div>
+
+<!-- ══════════════ CREDITS PAGE ══════════════ -->
+<div class="page" id="page-credits">
+  <div class="page-title">Stage Control</div>
+  <div class="page-heading">Credits Slides</div>
+
+  <!-- Live preview -->
+  <div class="preview-strip" id="preview-strip">
+    <div class="preview-blank">No slides yet — add one below</div>
+  </div>
+
+  <!-- Nav controls -->
+  <div class="credits-nav">
+    <button class="nav-arrow" id="nav-prev" onclick="prevSlide()" disabled>←</button>
+    <div class="slide-counter" id="slide-counter">No slides</div>
+    <button class="nav-arrow" id="nav-next" onclick="nextSlide()" disabled>→</button>
+    <button class="btn-show-credits" id="show-credits-btn" onclick="sendCreditsSlide()" disabled>Show on Projector</button>
+    <button class="btn-hide-credits" onclick="hideCredits()">Hide</button>
+  </div>
+
+  <div style="margin:28px 0 14px; border-top:1px solid #1a1a1a; padding-top:24px;">
+    <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#444;margin-bottom:14px;">Credits Music</div>
+  </div>
+
+  <div style="border:1px solid #1a1a1a;background:#080808;padding:18px;margin-bottom:24px;">
+    <div class="file-drop" id="music-drop" style="margin-bottom:14px;">
+      <input type="file" accept="audio/*" onchange="handleMusicFile(this)">
+      <div class="file-drop-text">Click or drag audio file here</div>
+      <div class="file-loaded" id="music-file-loaded"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-accent" id="music-play-btn" onclick="toggleCreditsMusic()" disabled>▶ Play Music</button>
+      <button class="btn-small" onclick="stopCreditsMusic()">■ Stop</button>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:160px;">
+        <span style="font-size:10px;color:#444;letter-spacing:2px;text-transform:uppercase;">Vol</span>
+        <input type="range" id="music-volume" min="0" max="100" value="80" oninput="setMusicVolume(this.value)" style="flex:1;accent-color:#fff;cursor:pointer;">
+        <span style="font-size:10px;color:#444;width:28px;" id="music-vol-label">80</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
+        <input type="checkbox" id="music-loop" checked style="accent-color:#fff;"> Loop
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
+        <input type="checkbox" id="music-fade" checked style="accent-color:#fff;"> Fade out
+      </label>
+    </div>
+  </div>
+
+  <div style="margin:0 0 14px;">
+    <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#444;margin-bottom:14px;">Slides</div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="credits-toolbar">
+    <button class="btn-accent" onclick="addSlide('names')">+ Names Slide</button>
+    <button class="btn-accent" onclick="addSlide('blank')">+ Blank Slide</button>
+    <button class="btn-accent" onclick="addSlide('title')">+ Title Slide</button>
+  </div>
+  <div class="credits-toolbar" style="margin-top:-4px;margin-bottom:20px">
+    <button class="btn-small" style="color:#2ecc71;border-color:#1a3a2a" onclick="exportCredits()">💾 Save Credits</button>
+    <button class="btn-small" onclick="importCredits()">📂 Load Credits</button>
+    <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImport(this)">
+  </div>
+
+  <!-- Slide list -->
+  <div class="slide-list" id="slide-list"></div>
+
+  <!-- Slide editor (shown when a slide is selected) -->
+  <div class="slide-editor" id="slide-editor" style="display:none">
+    <div class="slide-editor-title" id="editor-title">Edit Slide</div>
+
+    <!-- Names slide fields -->
+    <div id="editor-names-fields">
+      <input class="slide-title-input" id="editor-section-title" placeholder="Section heading (e.g. DIRECTED BY)" oninput="updateCurrentSlide()">
+      <textarea class="names-textarea" id="editor-names" placeholder="One name per line&#10;e.g.&#10;John Smith&#10;Jane Doe" oninput="updateCurrentSlide()"></textarea>
+      <div class="textarea-hint">One name per line</div>
+    </div>
+
+    <!-- Title slide fields -->
+    <div id="editor-title-fields" style="display:none">
+      <input class="slide-title-input" id="editor-big-title" placeholder="Big title text (e.g. THE CAST)" oninput="updateCurrentSlide()">
+      <input class="slide-title-input" id="editor-subtitle" placeholder="Subtitle (optional)" oninput="updateCurrentSlide()">
+    </div>
+
+    <!-- Blank slide: no fields needed -->
+    <div id="editor-blank-fields" style="display:none">
+      <div style="font-size:11px;color:#333;letter-spacing:2px;text-transform:uppercase;padding:10px 0;">Blank slide — projector shows black</div>
+    </div>
+
+    <!-- Text style -->
+    <div id="editor-style-row" style="margin-top:14px;">
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#444;margin-bottom:8px;">Text Color</div>
+      <div class="style-row">
+        <button class="type-btn active" onclick="setSlideColor('white',this)">White</button>
+        <button class="type-btn" onclick="setSlideColor('gold',this)">Gold</button>
+        <button class="type-btn" onclick="setSlideColor('cream',this)">Cream</button>
+        <button class="type-btn" onclick="setSlideColor('red',this)">Red</button>
+      </div>
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#444;margin-bottom:8px;margin-top:14px;">Background</div>
+      <div class="style-row">
+        <button class="type-btn active" id="bg-black" onclick="setSlideBg('black',this)">Black</button>
+        <button class="type-btn" id="bg-dark" onclick="setSlideBg('dark',this)">Dark Gray</button>
+        <button class="type-btn" id="bg-navy" onclick="setSlideBg('navy',this)">Navy</button>
+      </div>
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#444;margin-bottom:8px;margin-top:14px;">Font Size</div>
+      <div class="style-row">
+        <button class="type-btn" onclick="setFontSize('small',this)">Small</button>
+        <button class="type-btn active" onclick="setFontSize('medium',this)">Medium</button>
+        <button class="type-btn" onclick="setFontSize('large',this)">Large</button>
+        <button class="type-btn" onclick="setFontSize('xlarge',this)">X-Large</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- FLASHBACK PAGE -->
+<div class="page" id="page-flashback">
+  <div class="page-title">Stage Control</div>
+  <div class="page-heading">Flashback Cue</div>
+
+  <div class="status-bar">
+    <div class="dot nofile" id="fb-status-dot"></div>
+    <span id="fb-status-text">No flashback video loaded</span>
+  </div>
+
+  <div class="row">
+    <label>Flashback Video File</label>
+    <div class="file-drop" id="fb-file-drop">
+      <input type="file" accept="video/*" onchange="handleFlashbackFile(this)">
+      <div class="file-drop-text">Click or drag flashback video here</div>
+      <div class="file-loaded" id="fb-file-loaded"></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>After Video Ends</label>
+    <select id="fb-end-behavior">
+      <option value="black">Return to black</option>
+      <option value="loop">Loop video</option>
+      <option value="freeze">Freeze on last frame</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label>Video Scale</label>
+    <select id="fb-video-scale" onchange="updateFlashbackScale()">
+      <option value="contain">Fit to screen (letterbox)</option>
+      <option value="cover">Fill screen (crop edges)</option>
+      <option value="fill">Stretch to fill</option>
+    </select>
+  </div>
+
+  <div class="main-actions" style="margin-top:20px">
+    <button class="btn-trigger" id="fb-trigger-btn" onclick="triggerFlashback()" disabled style="flex:1;font-size:20px;padding:28px;letter-spacing:6px;">▶ PLAY FLASHBACK</button>
+  </div>
+  <div class="hint" id="fb-hint" style="margin-top:16px">Load a video file to enable</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  VIDEO CUE LOGIC
+// ══════════════════════════════════════════
+let triggerKey = ' ', triggerKeyLabel = 'SPACE';
+let videoObjectURL = null, projWindow = null;
+let isPlaying = false, capturingKey = false;
+
+const projectorHTML = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Projector</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:Georgia,serif}
+#pv,#pv2{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:none;}
+#pv{z-index:10}#pv2{z-index:11}
+#pv.visible,#pv2.visible{display:block}
+#credits-layer{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:20;transition:background 0.5s;}
+#credits-layer.visible{display:flex}
+#credits-section{letter-spacing:6px;text-transform:uppercase;margin-bottom:8px;opacity:0.7;font-family:'Courier New',monospace;}
+.credits-name{letter-spacing:3px;text-align:center;line-height:1.4;}
+#credits-big-title{letter-spacing:6px;text-transform:uppercase;text-align:center;font-family:Georgia,serif;}
+#credits-subtitle{letter-spacing:4px;text-transform:uppercase;opacity:0.6;margin-top:10px;font-family:'Courier New',monospace;}
+</style></head><body>
+<video id="pv" playsinline></video>
+<video id="pv2" playsinline></video>
+<div id="credits-layer">
+  <div id="credits-section"></div>
+  <div id="credits-names-container"></div>
+  <div id="credits-big-title"></div>
+  <div id="credits-subtitle"></div>
+</div>
+<script>
+var colors={white:'#ffffff',gold:'#d4af37',cream:'#f5e6c8',red:'#c0392b'};
+var bgs={black:'#000000',dark:'#111111',navy:'#0a0a1a'};
+var fontSizes={small:{section:'12px',name:'28px',title:'44px',subtitle:'16px'},medium:{section:'16px',name:'48px',title:'72px',subtitle:'22px'},large:{section:'20px',name:'64px',title:'96px',subtitle:'28px'},xlarge:{section:'24px',name:'80px',title:'120px',subtitle:'34px'}};
+window.loadVideo=function(url,scale){var v=document.getElementById('pv');v.src=url;v.style.objectFit=scale||'contain'};
+window.playVideo=function(){var v=document.getElementById('pv');v.classList.add('visible');v.currentTime=0;v.play()};
+window.stopVideo=function(){var v=document.getElementById('pv');v.pause();v.currentTime=0;v.classList.remove('visible')};
+window.setScale=function(s){document.getElementById('pv').style.objectFit=s};
+window.loadFlashback=function(url,scale){var v=document.getElementById('pv2');v.src=url;v.style.objectFit=scale||'contain'};
+window.playFlashback=function(){var v1=document.getElementById('pv');v1.pause();v1.classList.remove('visible');var v=document.getElementById('pv2');v.classList.add('visible');v.currentTime=0;v.play()};
+window.stopFlashback=function(){var v=document.getElementById('pv2');v.pause();v.currentTime=0;v.classList.remove('visible')};
+window.setFlashbackScale=function(s){document.getElementById('pv2').style.objectFit=s};
+window.showCredits=function(slide){
+  var layer=document.getElementById('credits-layer');
+  var color=colors[slide.color]||'#ffffff';
+  var bg=bgs[slide.bg]||'#000000';
+  layer.style.background=bg;
+  layer.style.color=color;
+  if(slide.type==='blank'){layer.className='credits-layer';layer.style.display='none';return;}
+  var fs=fontSizes[slide.fontSize||'medium'];
+  var sec=document.getElementById('credits-section');
+  sec.textContent=slide.sectionTitle||'';
+  sec.style.fontSize=fs.section;
+  var bt=document.getElementById('credits-big-title');
+  bt.textContent=slide.type==='title'?(slide.bigTitle||''):'';
+  bt.style.fontSize=fs.title;
+  var su=document.getElementById('credits-subtitle');
+  su.textContent=slide.type==='title'?(slide.subtitle||''):'';
+  su.style.fontSize=fs.subtitle;
+  var nc=document.getElementById('credits-names-container');
+  nc.innerHTML='';
+  if(slide.type==='names'&&slide.names){
+    slide.names.forEach(function(n){if(n.trim()){var d=document.createElement('div');d.className='credits-name';d.style.fontSize=fs.name;d.textContent=n.trim();nc.appendChild(d);}});
+  }
+  layer.classList.add('visible');
+};
+window.hideCredits=function(){
+  var layer=document.getElementById('credits-layer');
+  layer.classList.remove('visible');
+  layer.style.display='';
+};
+document.getElementById('pv').addEventListener('ended',function(){window.opener&&window.opener.onProjectorEnded&&window.opener.onProjectorEnded()});
+document.getElementById('pv2').addEventListener('ended',function(){window.opener&&window.opener.onFlashbackEnded&&window.opener.onFlashbackEnded()});
+<\/script></body></html>`;
+
+function toggleProjectorWindow() {
+  if (projWindow && !projWindow.closed) { projWindow.close(); projWindow=null; updateWindowStatus(false); return; }
+  projWindow = window.open('','ProjectorWindow','width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes');
+  if (!projWindow) { alert('Pop-up blocked! Please allow pop-ups for this page.'); return; }
+  projWindow.document.open(); projWindow.document.write(projectorHTML); projWindow.document.close();
+  setTimeout(()=>{ if(videoObjectURL) projWindow.loadVideo(videoObjectURL,document.getElementById('video-scale').value); updateWindowStatus(true); },400);
+  const chk=setInterval(()=>{ if(projWindow&&projWindow.closed){projWindow=null;updateWindowStatus(false);isPlaying=false;updateTriggerBtn();clearInterval(chk);}},500);
+}
+
+window.onProjectorEnded=function(){
+  const b=document.getElementById('end-behavior').value;
+  if(b==='black') stopVideo();
+  else if(b==='loop'&&projWindow&&!projWindow.closed) projWindow.playVideo();
+};
+
+function triggerVideo(){
+  if(!videoObjectURL) return;
+  if(!projWindow||projWindow.closed){alert('Please open the projector window first.');return;}
+  if(isPlaying){stopVideo();return;}
+  isPlaying=true; projWindow.playVideo(); updateTriggerBtn(); updateStatus();
+}
+
+function stopVideo(){
+  isPlaying=false;
+  if(projWindow&&!projWindow.closed) projWindow.stopVideo();
+  updateTriggerBtn(); updateStatus();
+}
+
+function handleFile(input){
+  const file=input.files[0]; if(!file) return;
+  if(videoObjectURL) URL.revokeObjectURL(videoObjectURL);
+  videoObjectURL=URL.createObjectURL(file);
+  document.getElementById('file-loaded').textContent='✓ '+file.name;
+  if(projWindow&&!projWindow.closed) projWindow.loadVideo(videoObjectURL,document.getElementById('video-scale').value);
+  document.getElementById('trigger-btn').disabled=false; updateStatus();
+}
+
+function updateScale(){
+  const s=document.getElementById('video-scale').value;
+  if(projWindow&&!projWindow.closed) projWindow.setScale(s);
+}
+
+function startCapture(){
+  capturingKey=true;
+  document.getElementById('capture-btn').classList.add('listening');
+  document.getElementById('capture-btn').textContent='Listening…';
+  document.getElementById('capture-hint').style.display='inline';
+}
+
+document.addEventListener('keydown',(e)=>{
+  if(capturingKey){
+    e.preventDefault();
+    const labels={' ':'SPACE','Enter':'ENTER','Tab':'TAB','ArrowLeft':'←','ArrowRight':'→','ArrowUp':'↑','ArrowDown':'↓','Escape':'ESC'};
+    triggerKey=e.key; triggerKeyLabel=labels[e.key]||e.key.toUpperCase();
+    document.getElementById('key-badge').textContent=triggerKeyLabel;
+    document.getElementById('capture-btn').classList.remove('listening');
+    document.getElementById('capture-btn').textContent='Change Key';
+    document.getElementById('capture-hint').style.display='none';
+    document.getElementById('key-hint').textContent='Press '+triggerKeyLabel+' to trigger video';
+    capturingKey=false; return;
+  }
+  if(e.key==='Escape'&&isPlaying){stopVideo();return;}
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'){nextSlide();return;}
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp'){prevSlide();return;}
+  if(e.key===triggerKey){e.preventDefault();triggerVideo();}
+});
+
+function updateWindowStatus(open){
+  const btn=document.getElementById('proj-btn'),dot=document.getElementById('win-dot'),text=document.getElementById('win-text');
+  if(open){btn.textContent='Close Projector';btn.classList.add('active');dot.className='dot ready';text.textContent='Projector open — drag to projector screen, press F11';}
+  else{btn.textContent='Open Projector';btn.classList.remove('active');dot.className='dot nowin';text.textContent='Projector window not open';}
+  updateStatus();
+}
+
+function updateTriggerBtn(){
+  const btn=document.getElementById('trigger-btn');
+  if(isPlaying){btn.textContent='■ Stop';btn.classList.add('playing');}
+  else{btn.textContent='▶ Play';btn.classList.remove('playing');}
+}
+
+function updateStatus(){
+  const dot=document.getElementById('status-dot'),text=document.getElementById('status-text');
+  if(!videoObjectURL){dot.className='dot nofile';text.textContent='No video loaded';return;}
+  if(!projWindow||projWindow.closed){dot.className='dot nowin';text.textContent='Video ready — open projector window';return;}
+  if(isPlaying){dot.className='dot playing';text.textContent='Playing…';return;}
+  dot.className='dot ready'; text.textContent='Ready — press '+triggerKeyLabel;
+}
+
+const dropArea=document.getElementById('file-drop');
+dropArea.addEventListener('dragover',e=>{e.preventDefault();dropArea.classList.add('dragover');});
+dropArea.addEventListener('dragleave',()=>dropArea.classList.remove('dragover'));
+dropArea.addEventListener('drop',e=>{
+  e.preventDefault();dropArea.classList.remove('dragover');
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('video/')){
+    if(videoObjectURL) URL.revokeObjectURL(videoObjectURL);
+    videoObjectURL=URL.createObjectURL(file);
+    document.getElementById('file-loaded').textContent='✓ '+file.name;
+    if(projWindow&&!projWindow.closed) projWindow.loadVideo(videoObjectURL,document.getElementById('video-scale').value);
+    document.getElementById('trigger-btn').disabled=false; updateStatus();
+  }
+});
+
+// ══════════════════════════════════════════
+//  CREDITS LOGIC
+// ══════════════════════════════════════════
+let slides = [];
+let currentSlideIndex = -1;
+let editingSlideIndex = -1;
+
+function addSlide(type) {
+  const slide = { type, sectionTitle:'', names:[], bigTitle:'', subtitle:'', color:'white', bg:'black', fontSize:'medium' };
+  if(type==='title') slide.bigTitle = 'THE CAST';
+  slides.push(slide);
+  editingSlideIndex = slides.length-1;
+  if(currentSlideIndex===-1) currentSlideIndex=0;
+  renderSlideList();
+  openEditor(editingSlideIndex);
+  updateCreditsNav();
+}
+
+function renderSlideList(){
+  const list=document.getElementById('slide-list');
+  list.innerHTML='';
+  slides.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='slide-item'+(i===editingSlideIndex?' active-slide':'');
+    div.innerHTML=`
+      <div class="slide-header">
+        <span class="slide-num">${i+1}</span>
+        <span class="slide-preview-text">${slidePreviewText(s)}</span>
+        <div class="slide-actions">
+          <button class="slide-btn" onclick="moveSlide(${i},-1)" title="Move up">↑</button>
+          <button class="slide-btn" onclick="moveSlide(${i},1)" title="Move down">↓</button>
+          <button class="slide-btn" onclick="editSlide(${i})" title="Edit">✏</button>
+          <button class="slide-btn" style="color:#5a1a1a" onclick="deleteSlide(${i})" title="Delete">✕</button>
+        </div>
+      </div>`;
+    div.addEventListener('click',(e)=>{ if(!e.target.closest('.slide-actions')){ editSlide(i); }});
+    list.appendChild(div);
+  });
+}
+
+function slidePreviewText(s){
+  if(s.type==='blank') return '[Blank — black screen]';
+  if(s.type==='title') return s.bigTitle||'[Title slide]';
+  if(s.type==='names'){
+    const head=s.sectionTitle?s.sectionTitle+': ':'';
+    const names=s.names.filter(n=>n.trim());
+    return head+(names.length?names.slice(0,3).join(', ')+(names.length>3?'…':''):'[No names yet]');
+  }
+  return '';
+}
+
+function editSlide(i){
+  editingSlideIndex=i;
+  openEditor(i);
+  renderSlideList();
+}
+
+function openEditor(i){
+  const s=slides[i];
+  const editor=document.getElementById('slide-editor');
+  editor.style.display='block';
+  document.getElementById('editor-title').textContent='Editing slide '+(i+1)+' — '+(s.type==='blank'?'Blank':s.type==='title'?'Title':'Names');
+
+  document.getElementById('editor-names-fields').style.display=s.type==='names'?'block':'none';
+  document.getElementById('editor-title-fields').style.display=s.type==='title'?'block':'none';
+  document.getElementById('editor-blank-fields').style.display=s.type==='blank'?'block':'none';
+  document.getElementById('editor-style-row').style.display=s.type==='blank'?'none':'block';
+
+  if(s.type==='names'){
+    document.getElementById('editor-section-title').value=s.sectionTitle||'';
+    document.getElementById('editor-names').value=(s.names||[]).join('\n');
+  }
+  if(s.type==='title'){
+    document.getElementById('editor-big-title').value=s.bigTitle||'';
+    document.getElementById('editor-subtitle').value=s.subtitle||'';
+  }
+
+  // Font size buttons
+  document.querySelectorAll('.style-row .type-btn').forEach(b=>{
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('setFontSize')){
+      b.classList.remove('active');
+      if(b.getAttribute('onclick').includes("'"+( s.fontSize||'medium')+"'")) b.classList.add('active');
+    }
+  });
+
+  // Color buttons
+  document.querySelectorAll('.style-row .type-btn').forEach(b=>{
+    b.classList.remove('active');
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+s.color+"'")) b.classList.add('active');
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+s.bg+"'")) b.classList.add('active');
+  });
+
+  updatePreview();
+}
+
+function updateCurrentSlide(){
+  if(editingSlideIndex<0||editingSlideIndex>=slides.length) return;
+  const s=slides[editingSlideIndex];
+  if(s.type==='names'){
+    s.sectionTitle=document.getElementById('editor-section-title').value;
+    s.names=document.getElementById('editor-names').value.split('\n');
+  }
+  if(s.type==='title'){
+    s.bigTitle=document.getElementById('editor-big-title').value;
+    s.subtitle=document.getElementById('editor-subtitle').value;
+  }
+  renderSlideList();
+  updatePreview();
+  if(editingSlideIndex===currentSlideIndex) autoSendSlide();
+}
+
+function setSlideColor(color, btn){
+  if(editingSlideIndex<0) return;
+  slides[editingSlideIndex].color=color;
+  btn.closest('.style-row').querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updatePreview();
+  if(editingSlideIndex===currentSlideIndex) autoSendSlide();
+}
+
+function setFontSize(size, btn){
+  if(editingSlideIndex<0) return;
+  slides[editingSlideIndex].fontSize=size;
+  btn.closest('.style-row').querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updatePreview();
+  if(editingSlideIndex===currentSlideIndex) autoSendSlide();
+}
+
+function setSlideBg(bg, btn){
+  if(editingSlideIndex<0) return;
+  slides[editingSlideIndex].bg=bg;
+  btn.closest('.style-row').querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updatePreview();
+  if(editingSlideIndex===currentSlideIndex) autoSendSlide();
+}
+
+function updatePreview(){
+  const strip=document.getElementById('preview-strip');
+  if(slides.length===0||editingSlideIndex<0){strip.innerHTML='<div class="preview-blank">No slides yet</div>';return;}
+  const s=slides[editingSlideIndex];
+  const colors={white:'#fff',gold:'#d4af37',cream:'#f5e6c8',red:'#c0392b'};
+  const bgs={black:'#000',dark:'#111',navy:'#0a0a1a'};
+  const c=colors[s.color]||'#fff', bg=bgs[s.bg]||'#000';
+  strip.style.background=bg;
+  if(s.type==='blank'){strip.innerHTML='<div class="preview-blank" style="color:#222">Black screen</div>';return;}
+  let html='';
+  if(s.type==='title'){
+    html=`<div style="color:${c};font-family:Georgia,serif;font-size:22px;letter-spacing:4px;text-transform:uppercase;text-align:center">${s.bigTitle||'—'}</div>`;
+    if(s.subtitle) html+=`<div style="color:${c};opacity:0.6;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:4px">${s.subtitle}</div>`;
+  } else {
+    if(s.sectionTitle) html+=`<div style="color:${c};opacity:0.6;font-size:10px;letter-spacing:4px;text-transform:uppercase;margin-bottom:6px">${s.sectionTitle}</div>`;
+    const names=(s.names||[]).filter(n=>n.trim()).slice(0,4);
+    names.forEach(n=>{ html+=`<div style="color:${c};font-family:Georgia,serif;font-size:16px;letter-spacing:2px;text-align:center">${n}</div>`; });
+    if(!names.length) html+=`<div style="color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase">No names added</div>`;
+  }
+  strip.innerHTML=html;
+}
+
+function deleteSlide(i){
+  slides.splice(i,1);
+  if(editingSlideIndex>=slides.length) editingSlideIndex=slides.length-1;
+  if(currentSlideIndex>=slides.length) currentSlideIndex=slides.length-1;
+  if(slides.length===0){editingSlideIndex=-1;currentSlideIndex=-1;document.getElementById('slide-editor').style.display='none';}
+  renderSlideList(); updateCreditsNav(); updatePreview();
+  if(editingSlideIndex>=0) openEditor(editingSlideIndex);
+}
+
+function moveSlide(i, dir){
+  const j=i+dir;
+  if(j<0||j>=slides.length) return;
+  [slides[i],slides[j]]=[slides[j],slides[i]];
+  if(editingSlideIndex===i) editingSlideIndex=j;
+  else if(editingSlideIndex===j) editingSlideIndex=i;
+  if(currentSlideIndex===i) currentSlideIndex=j;
+  else if(currentSlideIndex===j) currentSlideIndex=i;
+  renderSlideList(); updateCreditsNav();
+  if(editingSlideIndex>=0) openEditor(editingSlideIndex);
+}
+
+function autoSendSlide(){
+  if(projWindow&&!projWindow.closed&&currentSlideIndex>=0&&currentSlideIndex<slides.length){
+    projWindow.showCredits(slides[currentSlideIndex]);
+  }
+}
+function prevSlide(){
+  if(currentSlideIndex>0){ currentSlideIndex--; updateCreditsNav(); autoSendSlide(); }
+}
+function nextSlide(){
+  if(currentSlideIndex<slides.length-1){ currentSlideIndex++; updateCreditsNav(); autoSendSlide(); }
+}
+
+function updateCreditsNav(){
+  const prev=document.getElementById('nav-prev'),next=document.getElementById('nav-next');
+  const counter=document.getElementById('slide-counter');
+  const showBtn=document.getElementById('show-credits-btn');
+  if(slides.length===0){counter.textContent='No slides';prev.disabled=true;next.disabled=true;showBtn.disabled=true;return;}
+  counter.textContent='Slide '+(currentSlideIndex+1)+' of '+slides.length;
+  prev.disabled=currentSlideIndex<=0;
+  next.disabled=currentSlideIndex>=slides.length-1;
+  showBtn.disabled=!projWindow||projWindow.closed;
+}
+
+function sendCreditsSlide(){
+  if(!projWindow||projWindow.closed){alert('Open the projector window first.');return;}
+  if(currentSlideIndex<0||currentSlideIndex>=slides.length) return;
+  projWindow.showCredits(slides[currentSlideIndex]);
+}
+
+function hideCredits(){
+  if(projWindow&&!projWindow.closed) projWindow.hideCredits();
+}
+
+
+// ══════════════════════════════════════════
+//  FLASHBACK LOGIC
+// ══════════════════════════════════════════
+let fbVideoObjectURL = null;
+let fbIsPlaying = false;
+
+function handleFlashbackFile(input){
+  const file=input.files[0]; if(!file) return;
+  if(fbVideoObjectURL) URL.revokeObjectURL(fbVideoObjectURL);
+  fbVideoObjectURL=URL.createObjectURL(file);
+  document.getElementById('fb-file-loaded').textContent='✓ '+file.name;
+  document.getElementById('fb-trigger-btn').disabled=false;
+  document.getElementById('fb-hint').textContent='Ready — click the button to play';
+  updateFbStatus();
+}
+
+function triggerFlashback(){
+  if(!fbVideoObjectURL) return;
+  if(!projWindow||projWindow.closed){alert('Please open the projector window first.');return;}
+  if(fbIsPlaying){ stopFlashback(); return; }
+  fbIsPlaying=true;
+  projWindow.loadFlashback(fbVideoObjectURL, document.getElementById('fb-video-scale').value);
+  projWindow.playFlashback();
+  const btn=document.getElementById('fb-trigger-btn');
+  btn.textContent='■ STOP'; btn.classList.add('playing');
+  document.getElementById('fb-hint').textContent='Playing flashback…';
+  updateFbStatus();
+}
+
+function stopFlashback(){
+  fbIsPlaying=false;
+  if(projWindow&&!projWindow.closed) projWindow.stopFlashback();
+  const btn=document.getElementById('fb-trigger-btn');
+  btn.textContent='▶ PLAY FLASHBACK'; btn.classList.remove('playing');
+  document.getElementById('fb-hint').textContent='Ready — click the button to play';
+  updateFbStatus();
+}
+
+function updateFlashbackScale(){
+  const s=document.getElementById('fb-video-scale').value;
+  if(projWindow&&!projWindow.closed) projWindow.setFlashbackScale(s);
+}
+
+function updateFbStatus(){
+  const dot=document.getElementById('fb-status-dot'),text=document.getElementById('fb-status-text');
+  if(!fbVideoObjectURL){dot.className='dot nofile';text.textContent='No flashback video loaded';return;}
+  if(!projWindow||projWindow.closed){dot.className='dot nowin';text.textContent='Video ready — open projector window';return;}
+  if(fbIsPlaying){dot.className='dot playing';text.textContent='Playing flashback…';return;}
+  dot.className='dot ready';text.textContent='Flashback ready';
+}
+
+// Flashback has its own ended handler
+window.onFlashbackEnded = function(){
+  const b=document.getElementById('fb-end-behavior').value;
+  if(b==='loop'&&projWindow&&!projWindow.closed){ projWindow.playFlashback(); return; }
+  stopFlashback();
+};
+
+// Drag and drop for flashback
+const fbDrop=document.getElementById('fb-file-drop');
+fbDrop.addEventListener('dragover',e=>{e.preventDefault();fbDrop.classList.add('dragover');});
+fbDrop.addEventListener('dragleave',()=>fbDrop.classList.remove('dragover'));
+fbDrop.addEventListener('drop',e=>{
+  e.preventDefault();fbDrop.classList.remove('dragover');
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('video/')){
+    if(fbVideoObjectURL) URL.revokeObjectURL(fbVideoObjectURL);
+    fbVideoObjectURL=URL.createObjectURL(file);
+    document.getElementById('fb-file-loaded').textContent='✓ '+file.name;
+    document.getElementById('fb-trigger-btn').disabled=false;
+    document.getElementById('fb-hint').textContent='Ready — click the button to play';
+    updateFbStatus();
+  }
+});
+
+
+// ══════════════════════════════════════════
+//  SAVE / LOAD CREDITS
+// ══════════════════════════════════════════
+function exportCredits(){
+  if(slides.length===0){alert('No slides to save yet!');return;}
+  const data = JSON.stringify({version:1, slides:slides}, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'credits.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importCredits(){
+  document.getElementById('import-file-input').click();
+}
+
+function handleImport(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!data.slides||!Array.isArray(data.slides)) throw new Error('Invalid file');
+      if(slides.length>0 && !confirm('This will replace your current slides. Continue?')) return;
+      slides = data.slides;
+      currentSlideIndex = slides.length>0?0:-1;
+      editingSlideIndex = slides.length>0?0:-1;
+      renderSlideList();
+      updateCreditsNav();
+      if(editingSlideIndex>=0) openEditor(editingSlideIndex);
+      else { document.getElementById('slide-editor').style.display='none'; updatePreview(); }
+    } catch(err) {
+      alert('Could not load file — make sure it is a credits.json saved from this app.');
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+
+// ══════════════════════════════════════════
+//  CREDITS MUSIC
+// ══════════════════════════════════════════
+let musicObjectURL = null;
+let creditsAudio = null;
+let musicPlaying = false;
+
+function handleMusicFile(input){
+  const file=input.files[0]; if(!file) return;
+  if(musicObjectURL) URL.revokeObjectURL(musicObjectURL);
+  musicObjectURL=URL.createObjectURL(file);
+  document.getElementById('music-file-loaded').textContent='✓ '+file.name;
+  document.getElementById('music-play-btn').disabled=false;
+  if(creditsAudio){ creditsAudio.pause(); creditsAudio=null; }
+  creditsAudio=new Audio(musicObjectURL);
+  creditsAudio.volume=document.getElementById('music-volume').value/100;
+  creditsAudio.loop=document.getElementById('music-loop').checked;
+  creditsAudio.addEventListener('ended',()=>{
+    if(!document.getElementById('music-loop').checked){
+      musicPlaying=false;
+      document.getElementById('music-play-btn').textContent='▶ Play Music';
+    }
+  });
+}
+
+function toggleCreditsMusic(){
+  if(!creditsAudio) return;
+  if(musicPlaying){ pauseCreditsMusic(); }
+  else { playCreditsMusic(); }
+}
+
+function playCreditsMusic(){
+  if(!creditsAudio) return;
+  creditsAudio.loop=document.getElementById('music-loop').checked;
+  creditsAudio.play();
+  musicPlaying=true;
+  document.getElementById('music-play-btn').textContent='⏸ Pause Music';
+}
+
+function pauseCreditsMusic(){
+  if(!creditsAudio) return;
+  creditsAudio.pause();
+  musicPlaying=false;
+  document.getElementById('music-play-btn').textContent='▶ Play Music';
+}
+
+function stopCreditsMusic(){
+  if(!creditsAudio) return;
+  const fade=document.getElementById('music-fade').checked;
+  if(fade){
+    let vol=creditsAudio.volume;
+    const interval=setInterval(()=>{
+      vol=Math.max(0,vol-0.05);
+      creditsAudio.volume=vol;
+      if(vol<=0){ creditsAudio.pause(); creditsAudio.currentTime=0; creditsAudio.volume=document.getElementById('music-volume').value/100; clearInterval(interval); musicPlaying=false; document.getElementById('music-play-btn').textContent='▶ Play Music'; }
+    },80);
+  } else {
+    creditsAudio.pause(); creditsAudio.currentTime=0;
+    musicPlaying=false;
+    document.getElementById('music-play-btn').textContent='▶ Play Music';
+  }
+}
+
+function setMusicVolume(val){
+  document.getElementById('music-vol-label').textContent=val;
+  if(creditsAudio) creditsAudio.volume=val/100;
+}
+
+// Drag and drop for music
+const musicDrop=document.getElementById('music-drop');
+musicDrop.addEventListener('dragover',e=>{e.preventDefault();musicDrop.classList.add('dragover');});
+musicDrop.addEventListener('dragleave',()=>musicDrop.classList.remove('dragover'));
+musicDrop.addEventListener('drop',e=>{
+  e.preventDefault();musicDrop.classList.remove('dragover');
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('audio/')){
+    const fakeInput={files:[file]};
+    handleMusicFile(fakeInput);
+  }
+});
+
+// ── TAB SWITCHING ──
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('[onclick="switchTab(\''+tab+'\')"]').classList.add('active');
+  document.getElementById('page-'+tab).classList.add('active');
+  if(tab==='credits') updateCreditsNav();
+}
+
+// Update credits show button when projector opens/closes
+const origUpdateWindowStatus = updateWindowStatus;
+</script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theatre Control</title>
+<meta name="description" content="Browser-based show control for small theatre: video cues, credits slides, rolling credits and music on a second screen.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap">
+<link rel="stylesheet" href="css/control.css">
+</head>
+<body>
+
+<!-- ══════════ SHOW BAR (visible on every tab) ══════════ -->
+<header class="showbar">
+  <div class="brand">Theatre Control</div>
+  <button class="btn-projector" id="proj-btn">Open Projector</button>
+  <div class="proj-status" aria-live="polite">
+    <span class="dot nowin" id="proj-dot"></span>
+    <span id="proj-text">Projector closed</span>
+  </div>
+  <div class="showbar-actions">
+    <button class="btn-small" id="blackout-btn" title="Fade the whole projector to black (B)">Blackout</button>
+    <button class="btn-small btn-stop" id="stopall-btn" title="Stop all video (Esc)">Stop Video</button>
+    <button class="btn-small" id="help-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="cues" role="tab">🎬 Video Cues</button>
+  <button class="tab" data-tab="credits" role="tab">🎭 Credits</button>
+  <button class="tab" data-tab="settings" role="tab">⚙ Settings</button>
+  <span class="save-indicator" id="save-indicator" aria-live="polite"></span>
+</nav>
+
+<main>
+
+<!-- ══════════ VIDEO CUES ══════════ -->
+<section class="page active" id="page-cues" role="tabpanel">
+  <div class="page-title">Stage Control</div>
+  <h1 class="page-heading">Video Cues</h1>
+  <div class="cue-list" id="cue-list"></div>
+  <button class="btn-accent" id="add-cue-btn">+ Add Cue</button>
+  <p class="hint">Click a cue or press its hotkey to play · press again to stop · Esc stops all video</p>
+</section>
+
+<!-- ══════════ CREDITS ══════════ -->
+<section class="page" id="page-credits" role="tabpanel">
+  <div class="page-title">Stage Control</div>
+  <h1 class="page-heading">Credits</h1>
+
+  <div class="preview-frame">
+    <div class="preview" id="preview"></div>
+    <span class="preview-tag" id="preview-tag">Preview</span>
+  </div>
+
+  <div class="credits-nav">
+    <button class="nav-arrow" id="nav-prev" title="Previous slide (← ↑ PgUp)" aria-label="Previous slide">←</button>
+    <div class="slide-counter" id="slide-counter">No slides</div>
+    <button class="nav-arrow" id="nav-next" title="Next slide (→ ↓ PgDn)" aria-label="Next slide">→</button>
+    <button class="btn-show-credits" id="show-credits-btn" title="Show / hide credits (C)">Show on Projector</button>
+    <button class="btn-hide-credits" id="hide-credits-btn">Hide</button>
+  </div>
+
+  <div class="section-label">Rolling Credits</div>
+  <div class="panel">
+    <div class="inline">
+      <button class="btn-accent" id="roll-btn">▶ Roll Credits</button>
+      <label class="range-inline">
+        <span class="mini-label">Speed</span>
+        <input type="range" id="roll-speed" min="2" max="30" step="1" aria-label="Roll speed">
+        <span class="range-value" id="roll-speed-label"></span>
+      </label>
+      <label class="check"><input type="checkbox" id="roll-music"> Start music with roll</label>
+    </div>
+    <p class="muted small">Scrolls every slide bottom-to-top like a film crawl. Blank slides become gaps. Speed can be changed while rolling.</p>
+  </div>
+
+  <div class="section-label">Credits Music</div>
+  <div class="panel">
+    <div class="file-drop" id="music-drop">
+      <input type="file" id="music-input" accept="audio/*" aria-label="Choose music file">
+      <div class="file-drop-text">Click or drag audio file here</div>
+      <div class="file-loaded" id="music-file"></div>
+    </div>
+    <div class="inline music-controls">
+      <button class="btn-accent" id="music-play" disabled>▶ Play</button>
+      <button class="btn-small" id="music-stop" disabled>■ Stop</button>
+      <span class="music-time" id="music-time"></span>
+      <label class="range-inline grow">
+        <span class="mini-label">Vol</span>
+        <input type="range" id="music-volume" min="0" max="100" aria-label="Music volume">
+        <span class="range-value" id="music-vol-label"></span>
+      </label>
+    </div>
+    <div class="inline">
+      <label class="check"><input type="checkbox" id="music-loop"> Loop</label>
+      <label class="check"><input type="checkbox" id="music-fade"> Fade out on stop</label>
+      <label class="check">Fade length <input type="number" class="num-input" id="music-fade-secs" min="0.5" max="15" step="0.5"> s</label>
+    </div>
+  </div>
+
+  <div class="section-label">Slides</div>
+  <div class="credits-toolbar">
+    <button class="btn-accent" id="add-names">+ Names Slide</button>
+    <button class="btn-accent" id="add-title">+ Title Slide</button>
+    <button class="btn-accent" id="add-blank">+ Blank Slide</button>
+  </div>
+  <div class="credits-toolbar">
+    <button class="btn-small btn-save" id="export-credits">💾 Save Credits</button>
+    <button class="btn-small" id="import-credits">📂 Load Credits</button>
+    <input type="file" id="import-credits-input" accept=".json,application/json" hidden>
+  </div>
+
+  <div class="slide-list" id="slide-list"></div>
+
+  <div class="slide-editor" id="slide-editor" hidden>
+    <div class="slide-editor-title" id="editor-title">Edit Slide</div>
+
+    <div id="editor-names-fields">
+      <input class="text-input" id="editor-section" placeholder="Section heading (e.g. DIRECTED BY)" aria-label="Section heading">
+      <textarea class="names-textarea" id="editor-names" placeholder="One name per line&#10;e.g.&#10;John Smith&#10;Jane Doe" aria-label="Names"></textarea>
+      <div class="textarea-hint">One name per line · long lists shrink to fit the screen</div>
+    </div>
+
+    <div id="editor-title-fields" hidden>
+      <input class="text-input" id="editor-big-title" placeholder="Big title text (e.g. THE CAST)" aria-label="Title">
+      <input class="text-input" id="editor-subtitle" placeholder="Subtitle (optional)" aria-label="Subtitle">
+    </div>
+
+    <div id="editor-blank-fields" hidden>
+      <p class="muted">Blank slide — the projector shows a black card (it also covers any video underneath).</p>
+    </div>
+
+    <div id="editor-style">
+      <div class="section-label tight">Text Color</div>
+      <div class="style-row" data-prop="color"></div>
+      <div class="section-label tight">Background</div>
+      <div class="style-row" data-prop="bg"></div>
+      <div class="section-label tight">Font Size</div>
+      <div class="style-row" data-prop="fontSize"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ SETTINGS ══════════ -->
+<section class="page" id="page-settings" role="tabpanel">
+  <div class="page-title">Stage Control</div>
+  <h1 class="page-heading">Settings</h1>
+
+  <div class="section-label">Transitions</div>
+  <div class="panel">
+    <div class="row inline">
+      <label class="field-label" for="set-video-fade">Video &amp; blackout fade</label>
+      <input type="number" class="num-input" id="set-video-fade" min="0" max="5" step="0.1"> <span class="muted small">seconds</span>
+    </div>
+    <div class="row inline">
+      <label class="field-label" for="set-credits-fade">Credits fade</label>
+      <input type="number" class="num-input" id="set-credits-fade" min="0" max="5" step="0.1"> <span class="muted small">seconds</span>
+    </div>
+    <p class="muted small">Set to 0 for hard cuts.</p>
+  </div>
+
+  <div class="section-label">Behaviour</div>
+  <div class="panel stack">
+    <label class="check"><input type="checkbox" id="set-stop-others"> Starting a cue stops any other cue on screen</label>
+    <label class="check"><input type="checkbox" id="set-confirm-close"> Warn before closing this page while the projector is open</label>
+  </div>
+
+  <div class="section-label">Show File</div>
+  <div class="panel">
+    <p class="muted">Everything is autosaved in this browser. A show file is a portable backup — cue names, hotkeys, settings and all credits. Video and music files aren't included; re-select them after loading.</p>
+    <div class="inline">
+      <button class="btn-small btn-save" id="export-show">💾 Save Show File</button>
+      <button class="btn-small" id="import-show">📂 Load Show File</button>
+      <input type="file" id="import-show-input" accept=".json,application/json" hidden>
+    </div>
+  </div>
+
+  <div class="danger-zone">
+    <div class="section-label tight">Danger Zone</div>
+    <p class="muted">Clear every cue, slide and setting saved in this browser.</p>
+    <button class="btn-danger" id="reset-all">Reset Everything</button>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════ HELP ══════════ -->
+<div class="modal" id="help-modal" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="modal-box">
+    <h2 class="modal-title" id="help-title">Keyboard Shortcuts</h2>
+    <table class="keys">
+      <tr><td><kbd>Cue hotkey</kbd></td><td>Play / stop that cue (default: <kbd>Space</kbd> = Newspaper)</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Stop all video</td></tr>
+      <tr><td><kbd>B</kbd></td><td>Blackout on / off</td></tr>
+      <tr><td><kbd>C</kbd></td><td>Show / hide credits</td></tr>
+      <tr><td><kbd>→</kbd> <kbd>↓</kbd> <kbd>PgDn</kbd></td><td>Next credits slide</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>↑</kbd> <kbd>PgUp</kbd></td><td>Previous credits slide</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+      <tr><td><kbd>F</kbd> / double-click</td><td>Fullscreen (in the projector window)</td></tr>
+    </table>
+    <p class="muted small">Shortcuts work from either window and pause while you're typing in a text box. Presentation clickers that send PgUp/PgDn will step through credits.</p>
+    <button class="btn-accent" id="help-close" data-close>Close</button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="js/util.js"></script>
+<script src="js/state.js"></script>
+<script src="js/projector.js"></script>
+<script src="js/cues.js"></script>
+<script src="js/credits.js"></script>
+<script src="js/music.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/keyboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Show media — keep large video/audio out of the repo
+*.mp4
+*.m4v
+*.mov
+*.webm
+*.mkv
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.flac
+media/
+
+# Personal show files
+show-*.json
+credits-*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
